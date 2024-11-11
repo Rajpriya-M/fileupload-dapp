@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload DApp</title>
+</head>
+<body>
+    <h1>Upload Document to Blockchain</h1>
+    <div id="walletStatus">Wallet not connected</div>
+
+    <input type="file" id="fileInput">
+    <button id="uploadButton">Upload Document</button>
+    <div id="transactionStatus"></div> <!-- To show transaction status -->
+
+    <!-- Include ethers.js from CDN -->
+    <script type="module">
+        import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@5.7.0/dist/ethers.esm.min.js';
+
+       
+        const contractAddress = '0x3b5bf5b5e3408f68eda0c915625cd20caabf4197'; 
+// contract address
+        const contractABI = [
+            {
+                "inputs": [],
+                "name": "EmptyFileHash",
+                "type": "error"
+            },
+            {
+                "inputs": [],
+                "name": "EmptyFileName",
+                "type": "error"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "fileId",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "FileDoesNotExist",
+                "type": "error"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": true,
+                        "internalType": "uint256",
+                        "name": "fileId",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "string",
+                        "name": "fileName",
+                        "type": "string"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "string",
+                        "name": "fileHash",
+                        "type": "string"
+                    }
+                ],
+                "name": "FileUploaded",
+                "type": "event"
+            },
+            {
+                "inputs": [],
+                "name": "fileCount",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "files",
+                "outputs": [
+                    {
+                        "internalType": "string",
+                        "name": "fileName",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "fileHash",
+                        "type": "string"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "_fileId",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "getFile",
+                "outputs": [
+                    {
+                        "internalType": "string",
+                        "name": "fileName",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "fileHash",
+                        "type": "string"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "string",
+                        "name": "_fileName",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "_fileHash",
+                        "type": "string"
+                    }
+                ],
+                "name": "storeFileHash",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
+
+        let provider;
+        let signer;
+        let contract;
+
+        // Function to connect to MetaMask
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+                    document.getElementById("walletStatus").innerText = "Wallet Connected";
+                    console.log("MetaMask connected");
+                } catch (error) {
+                    console.error("User denied account access", error);
+                    document.getElementById("walletStatus").innerText = "Connection denied";
+                }
+            } else {
+                alert("MetaMask is not installed. Please install it to use this DApp.");
+            }
+        }
+
+        // Function to upload document
+        async function uploadDocument() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (file && contract) {
+                const fileName = file.name;
+                const fileHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(fileName)); // Hashing file name (change if necessary)
+
+                document.getElementById("transactionStatus").innerText = "Uploading..."; // Show uploading message
+
+                try {
+                    const tx = await contract.storeFileHash(fileName, fileHash);
+                    console.log("File uploaded:", tx);
+                    document.getElementById("transactionStatus").innerText = `Transaction successful! Hash: ${tx.hash}`; // Show success message
+                } catch (error) {
+                    console.error("File upload failed", error);
+                    document.getElementById("transactionStatus").innerText = "File upload failed. Please try again.";
+                }
+            } else {
+                alert("Please select a file to upload.");
+            }
+        }
+
+        // Event listener for the upload button
+        document.getElementById('uploadButton').addEventListener('click', uploadDocument);
+
+        // Automatically connect MetaMask when page loads
+        window.addEventListener('load', connectWallet);
+    </script>
+</body>
+</html>
